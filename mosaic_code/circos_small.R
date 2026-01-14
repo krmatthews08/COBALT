@@ -1,0 +1,332 @@
+pacman::p_load(dplyr, tidyverse, circlize, RColorBrewer, GenomicRanges)
+
+# Set up directories and paths
+output_dir <- "~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/mosaic_work/small_blast/"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
+}
+
+# Create circos_plots subdirectory
+circos_dir <- file.path(output_dir, "circos_plots")
+if (!dir.exists(circos_dir)) {
+  dir.create(circos_dir, recursive = TRUE)
+}
+
+# Define dataset colors
+dataset_colors <- c(
+  "cow" = "#e31a1c",
+  "wt_m" = "#1f78b4", 
+  "brca_m" = "#33a02c",
+  "rad_m" = "#ff7f00"
+)
+
+# Load required data files
+cat("Loading data files...\n")
+
+# Load genomic regions from BED file - UPDATED PATH
+chr <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed", check.names = FALSE, header = FALSE)
+
+# Load telomere data if available
+telomere_file <- "~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed"
+if (file.exists(telomere_file)) {
+  telomere <- read.table(telomere_file, check.names = FALSE, header = FALSE)
+  telomere <- telomere[telomere$V2 %in% chr$V1,]
+  cat("Telomere data loaded\n")
+} else {
+  telomere <- data.frame(V2 = character(), V9 = numeric(), V10 = numeric())
+  cat("Warning: Telomere file not found, proceeding without telomere track\n")
+}
+
+# Load putative mosaics from all datasets
+putative_files <- list.files(output_dir, pattern = "*_putative_mosaics.csv", full.names = TRUE)
+
+if (length(putative_files) == 0) {
+  stop("No putative mosaic files found. Please run the main analysis script first.")
+}
+
+all_putative_mosaics <- data.frame()
+for (file in putative_files) {
+  dataset_name <- str_extract(basename(file), "^[^_]+")
+  temp_data <- read.csv(file, check.names = FALSE)
+  if (nrow(temp_data) > 0) {
+    temp_data$dataset <- dataset_name
+    all_putative_mosaics <- rbind(all_putative_mosaics, temp_data)
+  }
+}
+
+cat("Total putative mosaics loaded:", nrow(all_putative_mosaics), "\n")
+cat("Unique VSG IDs:", length(unique(all_putative_mosaics$V1)), "\n")
+
+# Load VSG blast data
+vsg <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/blast/start_blast/out/vsgs_blast.txt", check.names = FALSE, header = FALSE)
+
+# Get blast data for putative mosaics only - NO ADDITIONAL FILTERING
+multi_hit_df <- vsg %>%
+  # Only filter for putative mosaics
+  filter(V1 %in% all_putative_mosaics$V1) %>%
+  # Add dataset information
+  mutate(sample = case_when(
+    str_starts(V1, "9") ~ "cow",
+    str_starts(V1, "WT") ~ "wt_m",
+    str_starts(V1, "B") ~ "brca_m",
+    str_starts(V1, "R") ~ "rad_m",
+    TRUE ~ "unknown"
+  ))
+
+cat("Total blast hits for putative mosaics:", nrow(multi_hit_df), "\n")
+cat("Sequences with blast hits:", length(unique(multi_hit_df$V1)), "\n")
+
+# Create synteny data using ALL blast hits for putative mosaics
+synteny <- multi_hit_df %>%
+  group_by(V1) %>%
+  mutate(hit_number = row_number()) %>%
+  # Take first two hits for each sequence
+  filter(hit_number <= 2) %>%
+  pivot_wider(
+    id_cols = c(V1, sample),
+    names_from = hit_number,
+    values_from = c(V2, V7, V8, V9, V10),
+    names_glue = "{.value}_{hit_number}"
+  ) %>%
+  # Only keep sequences that have at least 2 hits
+  filter(!is.na(V2_1) & !is.na(V2_2)) %>%
+  transmute(
+    vsg_id = V1,
+    Query = V2_1,
+    Target = V2_2,
+    Strand = "+",
+    Q.len = V8_1 - V7_1,
+    Q.start = V7_1,
+    Q.stop = V8_1,
+    T.len = V8_2 - V7_2,
+    T.start = V7_2,
+    T.stop = V8_2,
+    sample = sample
+  ) %>%
+  ungroup()
+
+cat("Synteny links created:", nrow(synteny), "\n")
+cat("Unique mosaics plotted:", length(unique(synteny$vsg_id)), "\n")
+
+# Save synteny data to circos_plots directory
+write.csv(synteny, file.path(circos_dir, "putative_mosaics_synteny_all.csv"), row.names = FALSE)
+
+# Function to create circlize plot
+circlize_plot <- function(synteny_data, plot_title, dataset_name = NULL) {
+  # Reset circos parameters
+  circos.clear()
+  
+  # Set default small gaps
+  gap_size <- c(rep(0.5, nrow(chr)-1), 1)  
+  
+  # Find the indices where each group starts
+  h1_start <- which(grepl("haplotype1", chr$V1))[1]
+  h2_start <- which(grepl("haplotype2", chr$V1))[1]
+  unassigned_start <- which(grepl("unassigned", chr$V1))[1]
+  
+  # Find the last unassigned index
+  last_unassigned <- max(which(grepl("unassigned", chr$V1)))
+  
+  # Add larger gaps between groups
+  if (!is.na(h2_start)) gap_size[h2_start-1] <- 10      # Gap between haplotype1 and haplotype2
+  if (!is.na(unassigned_start)) gap_size[unassigned_start-1] <- 10  # Gap between haplotype2 and unassigned
+  if (!is.na(last_unassigned)) gap_size[last_unassigned] <- 10     # Gap between unassigned and haplotype1
+  
+  # Set the gaps using circos.par
+  circos.par(gap.after = gap_size)
+  
+  # Initialize circos plot with chromosome data
+  circos.genomicInitialize(chr, labels.cex = 1, sector.names = chr$chromosome)
+  
+  # Plot telomere track
+  if (nrow(telomere) > 0) {
+    circos.genomicTrack(
+      data.frame(chr = telomere$V2, start = telomere$V9, end = telomere$V10),
+      ylim = c(0, 1),
+      track.height = 0.1,
+      panel.fun = function(region, value, ...) {
+        circos.genomicRect(region, value, col = "white", border = "black")
+      }
+    )
+  }
+  
+  # Only plot if there's data
+  if (nrow(synteny_data) > 0) {
+    # Create region data frames for links
+    region1 = data.frame(
+      chr = synteny_data$Query,
+      start = synteny_data$Q.start,
+      end = synteny_data$Q.stop
+    )
+    
+    region2 = data.frame(
+      chr = synteny_data$Target,
+      start = synteny_data$T.start,
+      end = synteny_data$T.stop
+    )
+    
+    # Choose colors: single color for individual plots, multiple for combined
+    if (!is.null(dataset_name)) {
+      # Single dataset - use one color
+      link_colors <- rep(dataset_colors[dataset_name], nrow(synteny_data))
+    } else {
+      # Combined plot - use dataset colors
+      link_colors <- dataset_colors[synteny_data$sample]
+    }
+    
+    # Add synteny links with colors
+    circos.genomicLink(
+      region1 = region1,
+      region2 = region2,
+      col = link_colors,
+      lwd = 1.5
+    )
+  }
+  
+  # Add title
+  title(plot_title, cex.main = 1.2)
+  
+  # Add legend
+  if (is.null(dataset_name)) {
+    # Combined plot - show all datasets
+    legend(
+      "bottomright",
+      title = "Datasets",
+      legend = names(dataset_colors),
+      fill = dataset_colors,
+      cex = 0.8,
+      bty = "n"
+    )
+  } else {
+    # Individual plot - show only current dataset
+    legend(
+      "bottomright",
+      title = "Dataset",
+      legend = toupper(dataset_name),
+      fill = dataset_colors[dataset_name],
+      cex = 0.8,
+      bty = "n"
+    )
+  }
+  
+  circos.clear()
+}
+
+# Create combined plot
+cat("Creating combined circos plot...\n")
+
+png(file.path(circos_dir, "putative_mosaics_circos_all.png"), 
+    units="in", width=20, height=15, res=300)
+circlize_plot(synteny, "Putative VSG Mosaics - All Datasets")
+dev.off()
+
+pdf(file.path(circos_dir, "putative_mosaics_circos_all.pdf"), 
+    width=20, height=15)
+circlize_plot(synteny, "Putative VSG Mosaics - All Datasets")
+dev.off()
+
+# Create individual plots for each dataset
+dataset_summary <- data.frame()
+
+for (dataset in names(dataset_colors)) {
+  cat("Creating circos plot for dataset:", dataset, "\n")
+  
+  # Filter synteny data for this dataset
+  dataset_synteny <- synteny %>%
+    filter(sample == dataset)
+  
+  dataset_count <- nrow(dataset_synteny)
+  unique_mosaics <- length(unique(dataset_synteny$vsg_id))
+  
+  cat(sprintf("  %s: %d links, %d unique mosaics\n", dataset, dataset_count, unique_mosaics))
+  
+  # Store summary info
+  dataset_summary <- rbind(dataset_summary, 
+                           data.frame(dataset = dataset, 
+                                      links = dataset_count, 
+                                      unique_mosaics = unique_mosaics))
+  
+  # Save individual dataset synteny data
+  if (nrow(dataset_synteny) > 0) {
+    write.csv(dataset_synteny, 
+              file.path(circos_dir, paste0("synteny_", dataset, ".csv")), 
+              row.names = FALSE)
+  }
+  
+  # Create plot title
+  plot_title <- paste("Putative VSG Mosaics -", toupper(dataset))
+  
+  # Create PNG
+  png(file.path(circos_dir, paste0("putative_mosaics_circos_", dataset, ".png")), 
+      units="in", width=20, height=15, res=300)
+  circlize_plot(dataset_synteny, plot_title, dataset)
+  dev.off()
+  
+  # Create PDF
+  pdf(file.path(circos_dir, paste0("putative_mosaics_circos_", dataset, ".pdf")), 
+      width=20, height=15)
+  circlize_plot(dataset_synteny, plot_title, dataset)
+  dev.off()
+}
+
+# Save dataset summary
+write.csv(dataset_summary, file.path(circos_dir, "dataset_summary.csv"), row.names = FALSE)
+
+# Save comprehensive summary report to circos_plots directory
+sink(file.path(circos_dir, "circos_plot_summary.txt"))
+
+cat("=== CIRCOS PLOT SUMMARY ===\n")
+cat("Generated on:", Sys.time(), "\n\n")
+cat("Chromosomes included:", nrow(chr), "\n")
+cat("Putative mosaics loaded:", nrow(all_putative_mosaics), "\n")
+cat("Sequences with blast hits:", length(unique(multi_hit_df$V1)), "\n")
+cat("Sequences plotted (≥2 hits):", length(unique(synteny$vsg_id)), "\n")
+cat("Total links plotted:", nrow(synteny), "\n\n")
+
+# Summary by dataset
+cat("=== DATASET BREAKDOWN ===\n")
+for (i in 1:nrow(dataset_summary)) {
+  cat(sprintf("%s: %d links, %d unique mosaics\n", 
+              toupper(dataset_summary$dataset[i]), 
+              dataset_summary$links[i], 
+              dataset_summary$unique_mosaics[i]))
+}
+
+# List files created
+cat("\n=== FILES CREATED ===\n")
+cat("Combined plots:\n")
+cat("1. putative_mosaics_circos_all.png - High resolution combined circos plot\n")
+cat("2. putative_mosaics_circos_all.pdf - PDF version of combined circos plot\n")
+cat("3. putative_mosaics_synteny_all.csv - Combined synteny data\n\n")
+
+cat("Individual dataset plots:\n")
+for (dataset in names(dataset_colors)) {
+  cat(sprintf("4. putative_mosaics_circos_%s.png - %s dataset plot\n", dataset, toupper(dataset)))
+  cat(sprintf("5. putative_mosaics_circos_%s.pdf - %s dataset PDF\n", dataset, toupper(dataset)))
+  cat(sprintf("6. synteny_%s.csv - %s synteny data\n", dataset, toupper(dataset)))
+}
+
+cat("\nSummary files:\n")
+cat("7. dataset_summary.csv - Summary statistics by dataset\n")
+cat("8. circos_plot_summary.txt - This comprehensive report\n")
+
+sink()
+
+cat("All plots and data saved to:", circos_dir, "\n")
+cat("\nFiles created:\n")
+cat("Combined:\n")
+cat("- PNG plot:", file.path(circos_dir, "putative_mosaics_circos_all.png"), "\n")
+cat("- PDF plot:", file.path(circos_dir, "putative_mosaics_circos_all.pdf"), "\n")
+cat("- Synteny data:", file.path(circos_dir, "putative_mosaics_synteny_all.csv"), "\n")
+
+cat("\nIndividual datasets:\n")
+for (dataset in names(dataset_colors)) {
+  cat(sprintf("- %s PNG: %s\n", toupper(dataset), 
+              file.path(circos_dir, paste0("putative_mosaics_circos_", dataset, ".png"))))
+}
+
+cat("\nSummary files:\n")
+cat("- Dataset summary:", file.path(circos_dir, "dataset_summary.csv"), "\n")
+cat("- Full report:", file.path(circos_dir, "circos_plot_summary.txt"), "\n")
+
+cat("\nAnalysis complete!\n")
