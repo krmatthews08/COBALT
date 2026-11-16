@@ -4,8 +4,14 @@ Code for the COBALT analysis of *Trypanosoma brucei* VSG (variant surface glycop
 genomic organisation: genome assembly, BLAST mapping of VSG transcripts onto the assembly, mosaic VSG
 detection, and the manuscript figures.
 
-This repository holds scripts only. No data are included, and the scripts were written to be run
-interactively on the author's machine.
+This repository holds scripts only. No data are included.
+
+## Configuration
+
+Each R script sets `data_dir` (input files) and `out_dir` (figures and analysis output) near the top.
+Both are set to placeholders (`path/to/data`, `path/to/results`), so edit them before running.
+Input files are expected below `data_dir` at the relative paths given in each script
+(for example `cobalt_2025/cdhit-94-94/summary/tpm/cluster_tpm.csv`). Output directories are created as needed.
 
 ## Layout
 

@@ -1,7 +1,9 @@
 pacman::p_load(dplyr, RColorBrewer, reshape, ggpubr, tidyverse, pheatmap, GenomicRanges, ggVennDiagram)
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
 
 # Create output directory
-output_dir <- "~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/mosaic_work/small_blast/"
+output_dir <- file.path(out_dir, "mosaic_work/small_blast")
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -40,9 +42,9 @@ calculate_query_coverage <- function(transcript_id, blast_data, transcript_lengt
   return(coverage_percent)
 }
 
-reads <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/read_counts/reads.txt", check.names = FALSE, header = TRUE)
-tpm <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/tpm/tpm.csv", check.names = FALSE, header = TRUE)
-meta <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/mosaic_work/meta.csv", check.names = FALSE, header = TRUE)
+reads <- read.table(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/read_counts/reads.txt"), check.names = FALSE, header = TRUE)
+tpm <- read.csv(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/tpm/tpm.csv"), check.names = FALSE, header = TRUE)
+meta <- read.csv(file.path(data_dir, "cobalt_2025/analysis/mosaic_work/meta.csv"), check.names = FALSE, header = TRUE)
 
 tpm <- tpm %>%
   mutate(Names = if_any(where(is.numeric), ~ . > 100000, vsg_id))
@@ -62,7 +64,7 @@ brca_m <- tpm %>%
 rad_m <- tpm %>%
   filter(str_starts(vsg_id, "R"))
 
-blast <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/blast/start_blast/out/vsgs_blast_short_filtered.txt", check.names = FALSE, header = FALSE)
+blast <- read.table(file.path(data_dir, "cobalt_2025/analysis/blast/start_blast/out/vsgs_blast_short_filtered.txt"), check.names = FALSE, header = FALSE)
 
 # Define datasets and their configurations
 datasets <- list(

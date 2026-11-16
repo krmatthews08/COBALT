@@ -1,7 +1,9 @@
 pacman::p_load(dplyr, tidyverse, circlize, RColorBrewer, GenomicRanges)
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
 
 # Set up directories and paths
-output_dir <- "~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/mosaic_work/standard_blast/"
+output_dir <- file.path(out_dir, "mosaic_work/standard_blast")
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -24,12 +26,12 @@ dataset_colors <- c(
 cat("Loading data files...\n")
 
 # Load genomic regions from BED file - UPDATED PATH
-chr <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed", check.names = FALSE, header = FALSE)
+chr <- read.table(file.path(data_dir, "cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed"), check.names = FALSE, header = FALSE)
 chr <- chr %>%
   filter(!str_detect(V1, "haplotype1"))
 
 # Load telomere data if available
-telomere_file <- "~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed"
+telomere_file <- file.path(data_dir, "cobalt_2025/analysis/genomes/start/tb927_names/tb_assembly.bed")
 if (file.exists(telomere_file)) {
   telomere <- read.table(telomere_file, check.names = FALSE, header = FALSE)
   telomere <- telomere[telomere$V2 %in% chr$V1,]
@@ -60,7 +62,7 @@ cat("Total putative mosaics loaded:", nrow(all_putative_mosaics), "\n")
 cat("Unique VSG IDs:", length(unique(all_putative_mosaics$V1)), "\n")
 
 # Load VSG blast data
-vsg <- read.table("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/blast/start_blast/out/vsgs_blast.txt", check.names = FALSE, header = FALSE)
+vsg <- read.table(file.path(data_dir, "cobalt_2025/analysis/blast/start_blast/out/vsgs_blast.txt"), check.names = FALSE, header = FALSE)
 vsg <- vsg %>%
   filter(str_starts(V2, "haplotype2"))
 
