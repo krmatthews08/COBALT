@@ -34,8 +34,7 @@ assembly/          Genome assembly and BLAST mapping
   flye.sh            Flye assembly from PacBio HiFi reads
   verkko.sh          Verkko assembly (HiFi + ONT + Hi-C)
   blast/
-    blast.sh           blastn of VSGs and telomere repeats against the assembly
-    blast_short.sh     blastn-short of VSGs against the assembly
+    blast.sh           blastn of VSGs and telomere repeats, and blastn-short of VSGs, against the assembly
     sort_blast_hits.py Keep the best hit (highest bit score) per query
 mosaic_code/       Putative VSG mosaic detection and circos plots
 code/              Manuscript figure scripts
@@ -64,15 +63,16 @@ Output goes to `asm/` for Verkko. `blast.sh` expects the final assembly at `asse
 
 ### 2. BLAST mapping (`assembly/blast/`)
 
-`blast.sh` expects these inputs, relative to the working directory:
+Set `WORKDIR` (and optionally `THREADS`) at the top of `blast.sh`. All other paths are relative to `WORKDIR`,
+which must contain:
 
-- `assembly/tb_assembly.fasta`, used as the BLAST database. Run `makeblastdb` first; this is not scripted.
-- `blast/db/concatenated_vsgs.fasta`, the VSG transcripts.
-- `blast/db/telomere/telomeres.fasta`, the telomere repeats.
+- `assembly/tb_assembly.fasta`, used as the BLAST database (`makeblastdb` is run if the index is missing)
+- `blast/db/concatenated_vsgs.fasta`, the VSG transcripts
+- `blast/db/telomere/telomeres.fasta`, the telomere repeats
 
-It writes tabular (`-outfmt 6`) results to `blast/out/vsgs_blast.txt` and `blast/out/tels_blast.txt`.
-`blast_short.sh` does the same with `-task blastn-short` and writes `blast/out/vsgs_blast_short.txt`. Its paths
-are relative to a subdirectory, so run it from one level down, not from the repo root.
+It writes tabular (`-outfmt 6`) results to `blast/out/`: `vsgs_blast.txt`, `tels_blast.txt`, and
+`vsgs_blast_short.txt` (from `-task blastn-short`). `mosaics_small.R` reads `vsgs_blast_short_filtered.txt`,
+which is a filtered version of the short-task output. That filtering step is not part of this repository.
 
 To keep only the top hit per query:
 
@@ -83,22 +83,38 @@ python assembly/blast/sort_blast_hits.py blast/out/vsgs_blast.txt > blast/out/vs
 ### 3. Mosaic detection (`mosaic_code/`)
 
 `mosaics_*.R` classify VSG transcripts from four datasets as gold transcripts, full hits or putative mosaics,
-based on query coverage of the BLAST hits. The datasets are selected by sample-name prefix in the TPM table:
+based on the BLAST hits of each transcript. The datasets are selected by sample-name prefix in the TPM table:
 cow (`9`), wild-type mouse (`WT`), BRCA mouse (`B`) and RAD mouse (`R`). `circos_*.R` then draw circos plots
-of the putative mosaics' hits across the assembly. Each pair has three variants:
+of the putative mosaics' hits across the assembly.
 
-| Variant | BLAST input | Filter |
+There are two variants of each script. Set the parameters at the top of the script before running.
+
+| | `*_standard.R` | `*_small.R` |
 |---|---|---|
-| `*_standard.R` | `vsgs_blast.txt` | haplotype 2 hits only |
-| `*_standard_100.R` | `vsgs_blast.txt` | as standard, plus alignment length >= 100 (`V4 >= 100`) |
-| `*_small.R` | `vsgs_blast_short_filtered.txt` | `blastn-short` hits |
+| BLAST input | `vsgs_blast.txt` (`blastn`) | mosaics: `vsgs_blast_short_filtered.txt` (`blastn-short`); circos: `vsgs_blast.txt` |
+| Assembly hits kept | haplotype 2 only | mosaics: all hits in the input; circos: all haplotypes |
+| Circos chromosomes | haplotype 2 only | all (haplotype 1 included) |
+| Extra parameter | `min_aln_length` (default 0, meaning no filter) | none |
+| Extra analysis | counts of mosaics with 2 and >2 loci, partial and no-hit categories, `summary.png` | query coverage of each putative mosaic, `_putative_coverage_details.csv` |
+| Output directory | `mosaic_work/standard_blast[_<min_aln_length>]` | `mosaic_work/small_blast` |
 
-Outputs, written to a per-variant directory, include `<dataset>_gold_transcripts.csv`, `_full_hits.csv`,
-`_putative_mosaics.csv`, scatter and box plots, `mosaic_analysis_report.txt`, and circos plots in `circos_plots/`
-(PNG, PDF and synteny CSVs). The `_100` variant also writes `summary_statistics.csv`.
+Thresholds used by `mosaics_*.R` (set in the code, not parameters):
 
-Run the `mosaics_*.R` script before its matching `circos_*.R` script, because the circos scripts read the
-putative-mosaic CSVs.
+- Gold transcripts: read depth >= 100x (reads x 150 bp / transcript length) in at least 2 samples of the dataset.
+- Good hits: BLAST identity >= 99%.
+- Full hits: identity >= 99% and alignment >= 99% of the transcript length.
+- Putative mosaics: more than one non-overlapping good hit on the assembly. The standard variant also requires
+  fewer than 200 non-overlapping hits.
+- Dominant clusters for the TPM table: any sample above 100,000 TPM.
+
+For the standard variant, `min_aln_length` was run at 0 and at 100 (alignment length >= 100 bp). Set it to 100 to
+reproduce the second run, which writes to `standard_blast_100`. Keep the value the same in `mosaics_standard.R` and
+`circos_standard.R`, because the circos script reads the CSVs the mosaic script wrote to that directory.
+
+Outputs include `<dataset>_gold_transcripts.csv`, `_full_hits.csv`, `_putative_mosaics.csv`, scatter and box plots,
+`mosaic_analysis_report.txt`, `summary_statistics.csv`, and circos plots in `circos_plots/` (PNG, PDF and synteny CSVs).
+
+Run the `mosaics_*.R` script before its matching `circos_*.R` script.
 
 ### 4. Figures (`code/`)
 

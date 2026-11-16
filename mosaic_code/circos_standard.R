@@ -3,7 +3,11 @@ data_dir <- "path/to/data"
 out_dir <- "path/to/results"
 
 # Set up directories and paths
-output_dir <- file.path(out_dir, "mosaic_work/standard_blast")
+# Minimum BLAST alignment length (bp) for a hit to be kept; 0 keeps all hits.
+# Use the same value in mosaics_standard.R and circos_standard.R.
+min_aln_length <- 0
+variant <- if (min_aln_length > 0) paste0("standard_blast_", min_aln_length) else "standard_blast"
+output_dir <- file.path(out_dir, "mosaic_work", variant)
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
