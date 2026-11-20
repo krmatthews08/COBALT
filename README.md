@@ -1,1 +1,127 @@
 # COBALT
+
+Code for the COBALT analysis of *Trypanosoma brucei* VSG (variant surface glycoprotein) expression and
+genomic organisation: genome assembly, BLAST mapping of VSG transcripts onto the assembly, mosaic VSG
+detection, and the manuscript figures.
+
+This repository holds scripts only. No data are included.
+
+## Configuration
+
+Each R script sets `data_dir` (input files) and `out_dir` (figures and analysis output) near the top.
+Both are set to placeholders (`path/to/data`, `path/to/results`), so edit them before running.
+Input files are expected below `data_dir` at the relative paths given in each script
+(for example `cobalt_2025/cdhit-94-94/summary/tpm/cluster_tpm.csv`). Output directories are created as needed.
+
+## Input files
+
+| File | Source |
+|---|---|
+| `cdhit-94-94/summary/...` (cluster TPM, read counts, VSG counts) | vsgseq2 output, with VSGs clustered by CD-HIT at 94/94 |
+| `meta.csv` | Sample metadata, defined by the user |
+| `tb_assembly.bed` | Annotation of the genome assembly (chromosome/contig coordinates) |
+| `associations.tsv` | Synteny links between assembled sequences, with columns `Query`, `Q.start`, `Q.stop`, `Target`, `T.start`, `T.stop`. Produced from a whole-genome alignment of the assembly. |
+| `chr.txt` | Table of assembled chromosomes and their coordinates (name, start, end) used for the circos layout |
+
+The BLAST tables (`vsgs_blast*.txt`, `tels_blast.txt`) come from step 2 below. The R scripts read them from
+`cobalt_2025/analysis/blast/start_blast/out/` (mosaic scripts, `Fig.6.R`) and `verkko_noref/blast/out/` (`Fig.5.R`)
+under `data_dir`, so copy or link the `blast/out/` results there.
+
+## Layout
+
+```
+assembly/          Genome assembly and BLAST mapping
+  flye.sh            Flye assembly from PacBio HiFi reads
+  verkko.sh          Verkko assembly (HiFi + ONT + Hi-C)
+  blast/
+    blast.sh           blastn of VSGs and telomere repeats, and blastn-short of VSGs, against the assembly
+    sort_blast_hits.py Keep the best hit (highest bit score) per query
+mosaic_code/       Putative VSG mosaic detection and circos plots
+code/              Manuscript figure scripts
+```
+
+## Requirements
+
+- Assembly: [Flye](https://github.com/mikolmogorov/Flye), [Verkko](https://github.com/marbl/verkko), BLAST+ (`blastn`)
+- Python 3 (standard library only) for `sort_blast_hits.py`
+- R packages, loaded with `pacman::p_load`: `dplyr`, `tidyverse`, `RColorBrewer`, `reshape`, `ggpubr`, `pheatmap`,
+  `GenomicRanges`, `ggVennDiagram`, `UpSetR`, `circlize`, `scales`, `tibble`, `ggplotify`, `magick`, `pdftools`
+
+## Workflow
+
+### 1. Assembly (`assembly/`)
+
+```bash
+# Flye: genome size set to 37 Mb; set THREADS at the top of the script
+bash assembly/flye.sh
+
+# Verkko: expects hifi/, ont/ and hic/ (R1/R2) directories of fastq.gz files
+bash assembly/verkko.sh
+```
+
+Output goes to `asm/` for Verkko. `blast.sh` expects the final assembly at `assembly/tb_assembly.fasta`.
+
+### 2. BLAST mapping (`assembly/blast/`)
+
+Set `WORKDIR` (and optionally `THREADS`) at the top of `blast.sh`. All other paths are relative to `WORKDIR`,
+which must contain:
+
+- `assembly/tb_assembly.fasta`, used as the BLAST database (`makeblastdb` is run if the index is missing)
+- `blast/db/concatenated_vsgs.fasta`, the VSG transcripts
+- `blast/db/telomere/telomeres.fasta`, the telomere repeats
+
+It writes tabular (`-outfmt 6`) results to `blast/out/`: `vsgs_blast.txt`, `tels_blast.txt`, and
+`vsgs_blast_short.txt` (from `-task blastn-short`). `mosaics_small.R` reads `vsgs_blast_short_filtered.txt`,
+which is a filtered version of the short-task output. That filtering step is not part of this repository.
+
+To keep only the top hit per query:
+
+```bash
+python assembly/blast/sort_blast_hits.py blast/out/vsgs_blast.txt > blast/out/vsgs_blast_best.txt
+```
+
+### 3. Mosaic detection (`mosaic_code/`)
+
+`mosaics_*.R` classify VSG transcripts from four datasets as gold transcripts, full hits or putative mosaics,
+based on the BLAST hits of each transcript. The datasets are selected by sample-name prefix in the TPM table:
+cow (`9`), wild-type mouse (`WT`), BRCA mouse (`B`) and RAD mouse (`R`). `circos_*.R` then draw circos plots
+of the putative mosaics' hits across the assembly.
+
+There are two variants of each script. Set the parameters at the top of the script before running.
+
+| | `*_standard.R` | `*_small.R` |
+|---|---|---|
+| BLAST input | `vsgs_blast.txt` (`blastn`) | mosaics: `vsgs_blast_short_filtered.txt` (`blastn-short`); circos: `vsgs_blast.txt` |
+| Assembly hits kept | haplotype 2 only | mosaics: all hits in the input; circos: all haplotypes |
+| Circos chromosomes | haplotype 2 only | all (haplotype 1 included) |
+| Extra parameter | `min_aln_length` (default 0, meaning no filter) | none |
+| Extra analysis | counts of mosaics with 2 and >2 loci, partial and no-hit categories, `summary.png` | query coverage of each putative mosaic, `_putative_coverage_details.csv` |
+| Output directory | `mosaic_work/standard_blast[_<min_aln_length>]` | `mosaic_work/small_blast` |
+
+Thresholds used by `mosaics_*.R` (set in the code, not parameters):
+
+- Gold transcripts: read depth >= 100x (reads x 150 bp / transcript length) in at least 2 samples of the dataset.
+- Good hits: BLAST identity >= 99%.
+- Full hits: identity >= 99% and alignment >= 99% of the transcript length.
+- Putative mosaics: more than one non-overlapping good hit on the assembly. The standard variant also requires
+  fewer than 200 non-overlapping hits.
+- Dominant clusters for the TPM table: any sample above 100,000 TPM.
+
+For the standard variant, `min_aln_length` was run at 0 and at 100 (alignment length >= 100 bp). Set it to 100 to
+reproduce the second run, which writes to `standard_blast_100`. Keep the value the same in `mosaics_standard.R` and
+`circos_standard.R`, because the circos script reads the CSVs the mosaic script wrote to that directory.
+
+Outputs include `<dataset>_gold_transcripts.csv`, `_full_hits.csv`, `_putative_mosaics.csv`, scatter and box plots,
+`mosaic_analysis_report.txt`, `summary_statistics.csv`, and circos plots in `circos_plots/` (PNG, PDF and synteny CSVs).
+
+Run the `mosaics_*.R` script before its matching `circos_*.R` script.
+
+### 4. Figures (`code/`)
+
+| Script | Content |
+|---|---|
+| `Fig.1.R` | Method benchmarking figures (comparison to a mapping table, mouse expression and speed tests) and a mosaic heatmap. Internal headings read "Fig. 2/3/5" because they come from the vsgseq2 method paper. |
+| `Fig.2.R` | VSG cluster expression (TPM) across samples. Clusters above 100,000 TPM are shown individually and the rest are pooled as "other". Per-VSG plots for cow and mouse. |
+| `Fig.3.R` | VSG persistence across time points: densities, and champion-length summaries. |
+| `Fig.5.R` | VSG and telomere positions along the assembled chromosomes, by haplotype, with synteny. |
+| `Fig.6.R` | VSG BLAST hits from `vsgs_blast_filtered.txt` against expression (TPM). |

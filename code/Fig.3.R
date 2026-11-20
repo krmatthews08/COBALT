@@ -1,4 +1,8 @@
 pacman::p_load(dplyr, RColorBrewer, reshape, ggpubr, tidyverse, pheatmap, UpSetR,ggVennDiagram)
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
+fig_dir <- file.path(out_dir, "figs")
+for (d in c("Fig.3", "persistance")) dir.create(file.path(fig_dir, d), recursive = TRUE, showWarnings = FALSE)
 
 #Persistance 
 
@@ -20,11 +24,11 @@ get_clusters <- function(sets, binary_data) {
 
 # Read in data
 
-length <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/cluster/champion_length.csv", check.names = FALSE)
+length <- read.csv(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/cluster/champion_length.csv"), check.names = FALSE)
 
 # Read in data
-tpm <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/tpm/cluster_tpm.csv", check.names = FALSE)
-meta <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/data/meta.csv")
+tpm <- read.csv(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/tpm/cluster_tpm.csv"), check.names = FALSE)
+meta <- read.csv(file.path(data_dir, "vsgseq2/data/meta.csv"))
 
 remove_list <- c("R1_9", "R1_6", "R1_3", "R1_4REP", "R1_4", "R1_5", "R1_1", "R1_7", "R1_5REP") 
 meta <- subset(meta, !(isolate %in% remove_list))
@@ -110,7 +114,7 @@ cluster_type_summary$persistance_log <- log10(1+cluster_type_summary$persistance
 cluster_type_filtered <- cluster_type_summary %>% 
   filter(persistance > 1)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.1.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.1.png"), units="in", width=6, height=6, res=300)
 ggscatter(cluster_type_filtered, x = "persistance", y = "mean_length", color = 'type',
           add = "loess", 
           conf.int = T,
@@ -121,7 +125,7 @@ ggscatter(cluster_type_filtered, x = "persistance", y = "mean_length", color = '
   ylab("Length")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.2.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.2.png"), units="in", width=6, height=6, res=300)
 ggscatter(cluster_type_filtered, x = "highest_x_axis", y = "mean_length", color = 'type',
           add = "loess", 
           conf.int = T,
@@ -132,7 +136,7 @@ ggscatter(cluster_type_filtered, x = "highest_x_axis", y = "mean_length", color 
   ylab("Length")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.3.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.3.png"), units="in", width=6, height=6, res=300)
 ggscatter(cluster_type_filtered, x = "highest_x_axis", y = "persistance", color = 'type',
           add = "loess", 
           conf.int = T,
@@ -146,7 +150,7 @@ dev.off()
 
 diverse_dpi <- cluster_type_filtered[cluster_type_filtered$highest_x_axis > 20 & cluster_type_filtered$highest_x_axis < 50, ]
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.4.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.4.png"), units="in", width=6, height=6, res=300)
 ggscatter(diverse_dpi, x = "highest_x_axis", y = "persistance", color = 'type',
           add = "loess", 
           conf.int = T,
@@ -158,7 +162,7 @@ ggscatter(diverse_dpi, x = "highest_x_axis", y = "persistance", color = 'type',
 dev.off()
 
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.5.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.5.png"), units="in", width=6, height=6, res=300)
 ggscatter(cluster_type_summary, x = "highest_value", y = "persistance",color = 'type',
           add = "loess", 
           conf.int = T,
@@ -210,14 +214,14 @@ long_form_data <- cluster_type_summary %>%
 long_form_filtered <- long_form_data %>% 
   filter(value > 0 | value < 0)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/persistance/persistance_density.png", units="in", width=10, height=10, res=300)
+png(file.path(fig_dir, "persistance/persistance_density.png"), units="in", width=10, height=10, res=300)
 ggdensity(long_form_filtered, x = "value", rug = F,
           color = "DPI") +
   ylab("Density") +
   xlab("Persistance") 
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/persistance/persistance_density_facet.png", units="in", width=10, height=10, res=300)
+png(file.path(fig_dir, "persistance/persistance_density_facet.png"), units="in", width=10, height=10, res=300)
 ggdensity(long_form_filtered, x = "value", rug = F,
           color = "DPI") +
   ylab("Density") +
@@ -225,7 +229,7 @@ ggdensity(long_form_filtered, x = "value", rug = F,
   facet_wrap(~ type, scales = 'free')
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.6.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.6.png"), units="in", width=6, height=6, res=300)
 ggboxplot(long_form_filtered, x = "DPI", y = "persistance",
           color = "DPI", order = c("0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70")) +
   ylab("Persistance") +
@@ -234,7 +238,7 @@ ggboxplot(long_form_filtered, x = "DPI", y = "persistance",
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.7.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.7.png"), units="in", width=6, height=6, res=300)
 ggboxplot(long_form_filtered, x = "DPI", y = "persistance",
           color = "DPI", order = c("0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70")) +
   ylab("Persistance") +
@@ -246,14 +250,14 @@ dev.off()
 
 long_form_filtered <- na.omit(long_form_filtered)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/persistance/expression_density.png", units="in", width=10, height=10, res=300)
+png(file.path(fig_dir, "persistance/expression_density.png"), units="in", width=10, height=10, res=300)
 ggdensity(long_form_filtered, x = "value", rug = F,
           color = "expression") +
   ylab("Density") +
   xlab("Persistance") 
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/persistance/expression_density_facet.png", units="in", width=10, height=10, res=300)
+png(file.path(fig_dir, "persistance/expression_density_facet.png"), units="in", width=10, height=10, res=300)
 ggdensity(long_form_filtered, x = "value", rug = F,
           color = "expression") +
   ylab("Density") +
@@ -261,7 +265,7 @@ ggdensity(long_form_filtered, x = "value", rug = F,
   facet_wrap(~ type, scales = 'free')
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.8.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.8.png"), units="in", width=6, height=6, res=300)
 ggboxplot(long_form_filtered, x = "expression", y = "persistance",
           color = "expression", order = c("0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100")) +
   ylab("Persistance") +
@@ -270,7 +274,7 @@ ggboxplot(long_form_filtered, x = "expression", y = "persistance",
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.9.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.9.png"), units="in", width=6, height=6, res=300)
 ggboxplot(long_form_filtered, x = "expression", y = "persistance",
           color = "expression", order = c("0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90", "90-100")) +
   ylab("Persistance") +
@@ -496,7 +500,7 @@ tpm_reduced_d4_10_early_filtered <- tpm_reduced_d4_10_early %>%
 tpm_reduced_wt_filtered <- tpm_reduced_wt %>%
   filter(rowSums(across(everything())) != 0)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.10.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.10.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = F,
@@ -512,7 +516,7 @@ pheatmap(log (1 + tpm_reduced),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.11.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.11.png"), units="in", width=6, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_mouse_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = F,
@@ -530,7 +534,7 @@ pheatmap(log (1 + tpm_reduced_mouse_filtered),
          scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.12.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.12.png"), units="in", width=8, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_cow_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = F,
@@ -546,7 +550,7 @@ pheatmap(log (1 + tpm_reduced_cow_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.13.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.13.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_wt),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = F,
@@ -562,7 +566,7 @@ pheatmap(log (1 + tpm_reduced_wt),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.14.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.14.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -578,7 +582,7 @@ pheatmap(log (1 + tpm_reduced),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.15.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.15.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_cow_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -594,7 +598,7 @@ pheatmap(log (1 + tpm_reduced_cow_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.16.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.16.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_mouse_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -612,7 +616,7 @@ dev.off()
 
 # Personalised heatmaps
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.17.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.17.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_d4_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -628,7 +632,7 @@ pheatmap(log (1 + tpm_reduced_d4_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.18.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.18.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_d4_10_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -644,7 +648,7 @@ pheatmap(log (1 + tpm_reduced_d4_10_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.19.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.19.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_d4_early_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -660,7 +664,7 @@ pheatmap(log (1 + tpm_reduced_d4_early_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.20.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.20.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_d4_10_early_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -676,7 +680,7 @@ pheatmap(log (1 + tpm_reduced_d4_10_early_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/wt_lines.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/wt_lines.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_wt_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = T,
@@ -692,7 +696,7 @@ pheatmap(log (1 + tpm_reduced_wt_filtered),
          show_colnames = T, show_rownames = F, scale = "row")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/cow_day.png", units="in", width=11, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/cow_day.png"), units="in", width=11, height=6, res=300)
 pheatmap(log (1 + tpm_reduced_cow_day_filtered),
          col = rev(brewer.pal(8, 'PuOr')),
          cluster_rows = T, cluster_cols = F,
@@ -724,7 +728,7 @@ binary_data <- tpm_cow_grouped %>%
   column_to_rownames("cluster") %>%
   mutate(across(everything(), ~ ifelse(. > 10000, 1, 0)))  # Convert values > 10000 to 1, others to 0
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.21.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.21.png"), units="in", width=8, height=6, res=300)
 upset(binary_data, sets = colnames(binary_data), order.by = "freq")
 dev.off()
 
@@ -746,7 +750,7 @@ intersection_matrix <- sapply(intersection_clusters, function(x) {
 })
 
 intersection_df <- as.data.frame(intersection_matrix, stringsAsFactors = FALSE)
-write.csv(intersection_df, "/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/cow_intersections.csv", row.names = FALSE, na = "")
+write.csv(intersection_df, file.path(fig_dir, "Fig.3/cow_intersections.csv"), row.names = FALSE, na = "")
 
 tpm_mouse_grouped <- tpm %>%
   mutate(
@@ -760,7 +764,7 @@ binary_data <- tpm_mouse_grouped %>%
   column_to_rownames("cluster") %>%
   mutate(across(everything(), ~ ifelse(. > 10000, 1, 0)))  # Convert values > 10000 to 1, others to 0
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.22.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.22.png"), units="in", width=8, height=6, res=300)
 upset(binary_data, sets = colnames(binary_data), order.by = "freq")
 dev.off()
 
@@ -782,7 +786,7 @@ intersection_matrix <- sapply(intersection_clusters, function(x) {
 })
 
 intersection_df <- as.data.frame(intersection_matrix, stringsAsFactors = FALSE)
-write.csv(intersection_df, "/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/mouse_intersections.csv", row.names = FALSE, na = "")
+write.csv(intersection_df, file.path(fig_dir, "Fig.3/mouse_intersections.csv"), row.names = FALSE, na = "")
 
 #All
 tpm_grouped <- tpm %>%
@@ -802,7 +806,7 @@ binary_data <- tpm_grouped %>%
   column_to_rownames("cluster") %>%
   mutate(across(everything(), ~ ifelse(. > 10000, 1, 0)))  
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.23.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.23.png"), units="in", width=8, height=6, res=300)
 upset(binary_data, sets = colnames(binary_data), order.by = "freq")
 dev.off()
 
@@ -824,7 +828,7 @@ intersection_matrix <- sapply(intersection_clusters, function(x) {
 })
 
 intersection_df <- as.data.frame(intersection_matrix, stringsAsFactors = FALSE)
-write.csv(intersection_df, "/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/all_intersections.csv", row.names = FALSE, na = "")
+write.csv(intersection_df, file.path(fig_dir, "Fig.3/all_intersections.csv"), row.names = FALSE, na = "")
 
 #Split by DPI for upset
 
@@ -864,7 +868,7 @@ binary_data <- tpm_grouped %>%
   column_to_rownames("cluster") %>%
   mutate(across(everything(), ~ ifelse(. > 10000, 1, 0)))  
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.24.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.24.png"), units="in", width=8, height=6, res=300)
 upset(binary_data, sets = colnames(binary_data), order.by = "freq")
 dev.off()
 
@@ -886,7 +890,7 @@ intersection_matrix <- sapply(intersection_clusters, function(x) {
 })
 
 intersection_df <- as.data.frame(intersection_matrix, stringsAsFactors = FALSE)
-write.csv(intersection_df, "/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/all_dpi_intersections.csv", row.names = FALSE, na = "")
+write.csv(intersection_df, file.path(fig_dir, "Fig.3/all_dpi_intersections.csv"), row.names = FALSE, na = "")
 
 #Split by DPI for upset WT
 
@@ -908,7 +912,7 @@ binary_data <- tpm_grouped %>%
   column_to_rownames("cluster") %>%
   mutate(across(everything(), ~ ifelse(. > 10000, 1, 0)))  
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.25.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.25.png"), units="in", width=8, height=6, res=300)
 upset(binary_data, sets = colnames(binary_data), order.by = "freq")
 dev.off()
 
@@ -930,7 +934,7 @@ intersection_matrix <- sapply(intersection_clusters, function(x) {
 })
 
 intersection_df <- as.data.frame(intersection_matrix, stringsAsFactors = FALSE)
-write.csv(intersection_df, "/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/wt_dpi_intersections.csv", row.names = FALSE, na = "")
+write.csv(intersection_df, file.path(fig_dir, "Fig.3/wt_dpi_intersections.csv"), row.names = FALSE, na = "")
 
 #Actual venn diagram
 
@@ -953,7 +957,7 @@ venn_sets <- lapply(colnames(binary_data), function(col) {
 
 names(venn_sets) <- colnames(binary_data)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.26.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.26.png"), units="in", width=6, height=6, res=300)
 ggVennDiagram(venn_sets, label_alpha = 0, label = "count") +
   scale_fill_gradient(low = "white", high = "dodgerblue") +
   theme(legend.position = "none") +
@@ -978,7 +982,7 @@ venn_sets <- lapply(colnames(binary_data), function(col) {
 
 names(venn_sets) <- colnames(binary_data)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.27.png", units="in", width=8, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.27.png"), units="in", width=8, height=6, res=300)
 ggVennDiagram(venn_sets, label_alpha = 0, label = "count") +
   scale_fill_gradient(low = "white", high = "dodgerblue") +
   theme(legend.position = "none") +
@@ -1005,7 +1009,7 @@ venn_sets <- lapply(colnames(binary_data), function(col) {
 
 names(venn_sets) <- colnames(binary_data)
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.3/Fig.3.28.png", units="in", width=6, height=6, res=300)
+png(file.path(fig_dir, "Fig.3/Fig.3.28.png"), units="in", width=6, height=6, res=300)
 ggVennDiagram(venn_sets, label_alpha = 0, label = "count") +
   scale_fill_gradient(low = "white", high = "dodgerblue") +
   theme(legend.position = "none") +

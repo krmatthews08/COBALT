@@ -1,9 +1,13 @@
 # First load required libraries
 pacman::p_load(dplyr, RColorBrewer, reshape, ggpubr, tidyverse, circlize)
-vsg <- read.table('~/Desktop/cobalt_assemblies/verkko_noref/blast/out/vsgs_blast.txt')
-meta <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/data/meta.csv")
-synteny <- read.csv('~/Desktop/cobalt_assemblies/verkko_noref/assembly/renamed/associations.tsv', sep = "\t")
-tel_blast <- read.table('~/Desktop/cobalt_assemblies/verkko_noref/blast/out/tels_blast.txt')
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
+fig_dir <- file.path(out_dir, "figs")
+for (d in c("Fig.5", "Fig.5_100")) dir.create(file.path(fig_dir, d), recursive = TRUE, showWarnings = FALSE)
+vsg <- read.table(file.path(data_dir, "verkko_noref/blast/out/vsgs_blast.txt"))
+meta <- read.csv(file.path(data_dir, "vsgseq2/data/meta.csv"))
+synteny <- read.csv(file.path(data_dir, "verkko_noref/assembly/renamed/associations.tsv"), sep = "\t")
+tel_blast <- read.table(file.path(data_dir, "verkko_noref/blast/out/tels_blast.txt"))
 
 vsg <- vsg %>%
   mutate(
@@ -19,7 +23,7 @@ vsg <-vsg %>%
   mutate(sample = sub("_trinity.*", "", vsg_id))
 
 # Read in data
-tpm <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/cluster/filtered_tpm_clusters.csv", check.names = FALSE)
+tpm <- read.csv(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/cluster/filtered_tpm_clusters.csv"), check.names = FALSE)
 
 remove_list <- c("R1_9", "R1_6", "R1_3", "R1_4REP", "R1_4", "R1_5", "R1_1", "R1_7", "R1_5REP") 
 
@@ -125,7 +129,7 @@ dom_list <- lapply(dom_list, function(samples){
   })
 
 # Read and format chromosome data
-chr <- read.table('~/Desktop/cobalt_assemblies/verkko_noref/assembly/chr.txt')
+chr <- read.table(file.path(data_dir, "verkko_noref/assembly/chr.txt"))
 h1_chr <- chr[grep("haplotype1", chr$V1), ]
 h2_chr <- chr[grep("haplotype2", chr$V1), ]
 unassigned_chr <- chr[grep("unassigned", chr$V1), ]
@@ -233,7 +237,7 @@ circlize_plot <- function() {
   circos.clear()
 }
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.5/Fig.5.1.png", units="in", width=8, height=8, res=300)
+png(file.path(fig_dir, "Fig.5/Fig.5.1.png"), units="in", width=8, height=8, res=300)
 circlize_plot()
 dev.off()
 
@@ -313,7 +317,7 @@ circlize_plot <- function() {
   )
 }
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.5_100/Fig.5.2.png", units="in", width=20, height=15, res=300)
+png(file.path(fig_dir, "Fig.5_100/Fig.5.2.png"), units="in", width=20, height=15, res=300)
 circlize_plot()
 dev.off()
 
@@ -396,7 +400,7 @@ circlize_plot <- function() {
   )
 }
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.5_100/Fig.5.3.png", units="in", width=20, height=15, res=300)
+png(file.path(fig_dir, "Fig.5_100/Fig.5.3.png"), units="in", width=20, height=15, res=300)
 circlize_plot()
 dev.off()
 
@@ -446,6 +450,6 @@ circlize_plot <- function() {
 }
 
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.5_100/Fig.5.4.png", units="in", width=8, height=8, res=300)
+png(file.path(fig_dir, "Fig.5_100/Fig.5.4.png"), units="in", width=8, height=8, res=300)
 circlize_plot()
 dev.off()

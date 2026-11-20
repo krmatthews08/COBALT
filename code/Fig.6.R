@@ -1,8 +1,12 @@
 # First load required libraries
 pacman::p_load(dplyr, RColorBrewer, reshape, ggpubr, tidyverse, circlize)
-vsg <- read.table('~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/analysis/blast/start_blast/out/vsgs_blast_filtered.txt')
-meta <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/data/meta.csv")
-tpm <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/cdhit-94-94/summary/cluster/filtered_tpm_clusters.csv", check.names = FALSE)
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
+fig_dir <- file.path(out_dir, "figs")
+for (d in c("Fig.6")) dir.create(file.path(fig_dir, d), recursive = TRUE, showWarnings = FALSE)
+vsg <- read.table(file.path(data_dir, "cobalt_2025/analysis/blast/start_blast/out/vsgs_blast_filtered.txt"))
+meta <- read.csv(file.path(data_dir, "vsgseq2/data/meta.csv"))
+tpm <- read.csv(file.path(data_dir, "cobalt_2025/cdhit-94-94/summary/cluster/filtered_tpm_clusters.csv"), check.names = FALSE)
 
 vsg <- vsg %>%
   mutate(
@@ -52,7 +56,7 @@ merged$x_axis <- as.numeric(merged$x_axis)
 cow <- merged[merged$host == 'cow', ]
 mouse <- merged[merged$host == 'mouse', ]
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.6/Fig.6.1.png", units="in", width=20, height=15, res=300)
+png(file.path(fig_dir, "Fig.6/Fig.6.1.png"), units="in", width=20, height=15, res=300)
 ggboxplot(cow, x = "x_axis", y = "V3", legend = "right") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   facet_wrap(~ V13, scales = 'free') +
@@ -60,7 +64,7 @@ ggboxplot(cow, x = "x_axis", y = "V3", legend = "right") +
   xlab("DPI")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.6/Fig.6.2.png", units="in", width=20, height=15, res=300)
+png(file.path(fig_dir, "Fig.6/Fig.6.2.png"), units="in", width=20, height=15, res=300)
 ggscatter(cow, x = "x_axis", y = "V3", color = "V13",
           add = "loess", 
           alpha = 0.01,
@@ -69,7 +73,7 @@ ggscatter(cow, x = "x_axis", y = "V3", color = "V13",
   xlab("DPI")
 dev.off()
 
-png("/Users/goldriev/Google Drive/My Drive/edinburgh/vsg/cobalt_2025/figs/Fig.6/Fig.6.3.png", units="in", width=20, height=15, res=300)
+png(file.path(fig_dir, "Fig.6/Fig.6.3.png"), units="in", width=20, height=15, res=300)
 ggscatter(cow, x = "x_axis", y = "V3", color = "V13",
           add = "loess", 
           alpha = 0.01,

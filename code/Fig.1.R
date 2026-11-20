@@ -1,10 +1,14 @@
 # Load packages
 pacman::p_load(dplyr, RColorBrewer, reshape, ggpubr, scales, tibble, pheatmap, ggplotify, magick, pdftools)
+data_dir <- "path/to/data"
+out_dir <- "path/to/results"
+fig_dir <- file.path(out_dir, "figs")
+for (d in c("method", "method/Fig.5")) dir.create(file.path(fig_dir, d), recursive = TRUE, showWarnings = FALSE)
 
 # Fig.2
 
-mapping <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2_analysis/WOR/analysis/bench/mapping.csv")
-bench <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2_analysis/WOR/analysis/bench/cd-94-94/comparison.csv")
+mapping <- read.csv(file.path(data_dir, "vsgseq2_analysis/WOR/analysis/bench/mapping.csv"))
+bench <- read.csv(file.path(data_dir, "vsgseq2_analysis/WOR/analysis/bench/cd-94-94/comparison.csv"))
 
 bench <- bench %>%
   group_by(file, tool) %>%
@@ -95,7 +99,7 @@ fig.2d <- ggbarplot(lib_b, x = "file", y = "expression_pct",
   stat = "identity",
   fill = NA, color = "black", size = 1, width = 0.8) 
 
-png("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.2.png", units="in", width=10, height=12, res=300)
+png(file.path(fig_dir, "method/Fig.2.png"), units="in", width=10, height=12, res=300)
 row1 <- ggarrange(
   fig.2a + theme(legend.position = "none"),
   fig.2b + theme(legend.position = "right"),
@@ -123,9 +127,9 @@ dev.off()
 
 #Fig. 3
 
-mapping <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2_analysis/WOR/analysis/mouse/mapping.csv")
-expression <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2_analysis/WOR/analysis/mouse/combined_expression.csv")
-speed <- read.csv("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2_analysis/WOR/analysis/mouse/speed_test.csv")
+mapping <- read.csv(file.path(data_dir, "vsgseq2_analysis/WOR/analysis/mouse/mapping.csv"))
+expression <- read.csv(file.path(data_dir, "vsgseq2_analysis/WOR/analysis/mouse/combined_expression.csv"))
+speed <- read.csv(file.path(data_dir, "vsgseq2_analysis/WOR/analysis/mouse/speed_test.csv"))
 
 mapping$percent_aligned <- (mapping$aligned / mapping$total) * 100
 
@@ -199,7 +203,7 @@ fig.3c <- ggbarplot(mouse, x = "tool", y = "expression_pct",
   theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1)) +
   theme(legend.position="none")
 
-png("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.3.png", units="in", width=8, height=13, res=300)
+png(file.path(fig_dir, "method/Fig.3.png"), units="in", width=8, height=13, res=300)
 ggarrange(
   ggarrange(fig.3a, fig.3b, ncol = 2, labels = c("A", "B"), font.label = list(size = 14, face = "bold")),
   fig.3c,
@@ -214,7 +218,7 @@ ggarrange(
 
 dev.off()
 
-png("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.4.png", units="in", width=5, height=3, res=300)
+png(file.path(fig_dir, "method/Fig.4.png"), units="in", width=5, height=3, res=300)
 ggarrange(
   fig.4b, fig.4a,
   heights = c(1, 1), 
@@ -233,7 +237,7 @@ dev.off()
 
 #Fig. 5
 
-data <- read.table('~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/mosaics/mosaics.txt', header = TRUE, sep = "\t")
+data <- read.table(file.path(data_dir, "vsgseq2/method_paper/mosaics/mosaics.txt"), header = TRUE, sep = "\t")
 
 # Ensure unique row names by creating a unique identifier for internal use
 data <- data %>%
@@ -287,9 +291,9 @@ png_to_ggplot <- function(path, density = 600, pages = 1) {
 
 # Paths to the PDF files
 path <- list(
-  EF174492 = "~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.5/EF174492.png",
-  EF560198 = "~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.5/EF560198.png",
-  EF560204 = "~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.5/EF560204.png"
+  EF174492 = file.path(fig_dir, "method/Fig.5/EF174492.png"),
+  EF560198 = file.path(fig_dir, "method/Fig.5/EF560198.png"),
+  EF560204 = file.path(fig_dir, "method/Fig.5/EF560204.png")
 )
 
 # Create ggplot objects
@@ -297,7 +301,7 @@ fig.5b <- png_to_ggplot(path$EF174492)
 fig.5c <- png_to_ggplot(path$EF560198)
 fig.5d <- png_to_ggplot(path$EF560204)
 
-png("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.5.png", units="in", width=10, height=15, res=300)
+png(file.path(fig_dir, "method/Fig.5.png"), units="in", width=10, height=15, res=300)
 ggarrange(
   fig.5a,               
   ggarrange(fig.5b, fig.5c, ncol = 2, labels = c("b", "c")), 
@@ -358,7 +362,7 @@ a <- a + theme(legend.position = "none")
 b <- b + theme(legend.position = "none")
 c <- c + theme(legend.position = "none")
 
-png("~/Google Drive/My Drive/edinburgh/vsg/vsgseq2/method_paper/figures/Fig.3.png", units="in", width=10, height=12, res=300)
+png(file.path(fig_dir, "method/Fig.3.png"), units="in", width=10, height=12, res=300)
 ggarrange(
   b,          
   ggarrange(a, c, ncol = 2, labels = c("b", "c")), 

@@ -13,7 +13,7 @@ def process_blast_output(blast_file):
             bit_score = float(fields[11])
             query_hits[query_id].append((bit_score, line))
     
-    # Print top 5 hits per query
+    # Print top hit per query
     for query in query_hits:
         sorted_hits = sorted(query_hits[query], reverse=True)
         for score, line in sorted_hits[:1]:
